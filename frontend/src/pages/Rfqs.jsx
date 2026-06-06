@@ -1,63 +1,215 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
+import api from "../api";
 
-export default function Rfqs({ user, setView, setSelectedRfqId }) {
-  const [tab, setTab] = useState('list'); // 'list' or 'create'
+export default function Rfqs({ user }) {
+  const [rfqs, setRfqs] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [showForm, setShowForm] = useState(false);
 
-  // TODO: Fetch RFQ list from GET /api/rfqs.
-  // Add a form component to POST /api/rfqs (Officer role).
-  // Allow Vendors to submit unit pricing quotations.
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    category: "",
+    quantity: "",
+    deadline: "",
+    vendorIds: [],
+  });
+
+  useEffect(() => {
+    loadRfqs();
+    loadVendors();
+  }, []);
+
+  const loadRfqs = async () => {
+    try {
+      const res = await api.get("/rfqs");
+      setRfqs(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadVendors = async () => {
+    try {
+      const res = await api.get("/vendors");
+      setVendors(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const createRfq = async () => {
+    try {
+      await api.post("/rfqs", {
+        ...form,
+        quantity: Number(form.quantity),
+        status: "published",
+      });
+
+      alert("RFQ Created Successfully");
+
+      setForm({
+        title: "",
+        description: "",
+        category: "",
+        quantity: "",
+        deadline: "",
+        vendorIds: [],
+      });
+
+      setShowForm(false);
+
+      loadRfqs();
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to create RFQ");
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 style={{ fontWeight: 800 }}>Request For Quotations (RFQs)</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Publish new procurement tenders and check vendor bidding lines</p>
-        </div>
-        {user.role === 'officer' && (
-          <button className="btn btn-primary" onClick={() => setTab(tab === 'list' ? 'create' : 'list')}>
-            {tab === 'list' ? 'Create RFQ' : 'View RFQs List'}
+    <div className="card">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+        }}
+      >
+        <h2>RFQs</h2>
+
+        {user.role === "officer" && (
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? "Close Form" : "Create RFQ"}
           </button>
         )}
       </div>
 
-      {tab === 'list' ? (
-        <div className="card" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="custom-table">
-              <thead>
-                <tr>
-                  <th>RFQ title</th>
-                  <th>Category</th>
-                  <th>Quantity</th>
-                  <th>Deadline</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    RFQ data not fetched. Implement GET /api/rfqs logic.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="card">
-          <h3 className="card-title">Create Tender RFQ</h3>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-            <div className="form-group">
-              <label>Tender Title</label>
-              <input type="text" className="form-control" placeholder="e.g. Office Hardware Supplies" />
-            </div>
-            <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-end' }}>
-              Publish Tender
-            </button>
-          </form>
+      {showForm && (
+        <div
+          style={{
+            border: "1px solid #444",
+            padding: "20px",
+            marginBottom: "20px",
+          }}
+        >
+          <h3>Create RFQ</h3>
+
+          <input
+            className="form-control"
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) =>
+              setForm({ ...form, title: e.target.value })
+            }
+          />
+
+          <br />
+
+          <textarea
+            className="form-control"
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
+          />
+
+          <br />
+
+          <input
+            className="form-control"
+            placeholder="Category"
+            value={form.category}
+            onChange={(e) =>
+              setForm({ ...form, category: e.target.value })
+            }
+          />
+
+          <br />
+
+          <input
+            type="number"
+            className="form-control"
+            placeholder="Quantity"
+            value={form.quantity}
+            onChange={(e) =>
+              setForm({ ...form, quantity: e.target.value })
+            }
+          />
+
+          <br />
+
+          <input
+            type="date"
+            className="form-control"
+            value={form.deadline}
+            onChange={(e) =>
+              setForm({ ...form, deadline: e.target.value })
+            }
+          />
+
+          <br />
+
+          <label>Select Vendors</label>
+
+          <select
+            multiple
+            className="form-control"
+            onChange={(e) => {
+              const ids = Array.from(
+                e.target.selectedOptions,
+                (option) => Number(option.value)
+              );
+
+              setForm({
+                ...form,
+                vendorIds: ids,
+              });
+            }}
+          >
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.name}
+              </option>
+            ))}
+          </select>
+
+          <br />
+
+          <button
+            className="btn btn-success"
+            onClick={createRfq}
+          >
+            Save RFQ
+          </button>
         </div>
       )}
+
+      <table className="custom-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Deadline</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {rfqs.map((rfq) => (
+            <tr key={rfq.id}>
+              <td>{rfq.title}</td>
+              <td>{rfq.category}</td>
+              <td>{rfq.quantity}</td>
+              <td>{rfq.deadline?.split("T")[0]}</td>
+              <td>{rfq.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

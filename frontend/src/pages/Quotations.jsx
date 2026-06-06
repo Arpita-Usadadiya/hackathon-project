@@ -1,28 +1,43 @@
-import React from 'react';
+import React, { useState } from "react";
+import api from "../api";
 
-export default function Quotations({ rfq, user, onSubmissionSuccess }) {
-  // TODO: Fetch any existing quote using GET /api/quotations/myquote/:rfqId.
-  // Add a form to submit or update a quotation bid (POST /api/quotations).
+export default function Quotations({ rfq }) {
+  const [unitPrice, setUnitPrice] = useState("");
+  const [deliveryDays, setDeliveryDays] = useState("");
+
+  const submitQuote = async () => {
+    try {
+      await api.post("/quotations", {
+        rfq_id: rfq.id,
+        unit_price: unitPrice,
+        delivery_days: deliveryDays,
+      });
+
+      alert("Quotation submitted");
+    } catch (err) {
+      alert(err.response?.data?.error);
+    }
+  };
+
   return (
     <div className="card">
-      <h3 className="card-title">Quotation Bid Workspace</h3>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '4px' }}>
-        Tender Project: {rfq.title}
-      </p>
-      
-      <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-        <div className="form-group">
-          <label>Unit Price (INR)</label>
-          <input type="number" className="form-control" placeholder="0.00" />
-        </div>
-        <div className="form-group">
-          <label>Delivery Days</label>
-          <input type="number" className="form-control" placeholder="e.g. 10" />
-        </div>
-        <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-end' }}>
-          Submit Quotation Bid
-        </button>
-      </form>
+      <h2>{rfq.title}</h2>
+
+      <input
+        placeholder="Unit Price"
+        value={unitPrice}
+        onChange={(e) => setUnitPrice(e.target.value)}
+      />
+
+      <input
+        placeholder="Delivery Days"
+        value={deliveryDays}
+        onChange={(e) => setDeliveryDays(e.target.value)}
+      />
+
+      <button onClick={submitQuote}>
+        Submit Quote
+      </button>
     </div>
   );
 }

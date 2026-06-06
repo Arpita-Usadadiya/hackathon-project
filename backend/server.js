@@ -11,6 +11,7 @@ import quotationsRouter from './routes/quotations.js';
 import approvalsRouter from './routes/approvals.js';
 import documentsRouter from './routes/documents.js';
 import logsRouter from './routes/logs.js';
+import pdfRoutes from './routes/pdf.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/quotations', quotationsRouter);
 app.use('/api/approvals', approvalsRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/logs', logsRouter);
+app.use('/api/pdf', pdfRoutes);
 
 app.get('/', (req, res) => {
   res.send('VendorBridge Boilerplate Server is running');

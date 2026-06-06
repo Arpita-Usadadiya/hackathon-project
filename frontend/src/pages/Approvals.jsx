@@ -1,28 +1,53 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
+import api from "../api";
 
-export default function Approvals({ user }) {
-  // TODO: Fetch pending approvals queue from GET /api/approvals.
-  // Add action buttons to approve or reject bids (POST /api/approvals/:quoteId/action).
-  // Upon approval, display the generated PO and Invoice numbers.
+export default function Approvals() {
+  const [quotes, setQuotes] = useState([]);
+
+  useEffect(() => {
+    loadQuotes();
+  }, []);
+
+  const loadQuotes = async () => {
+    const res = await api.get("/approvals");
+    setQuotes(res.data);
+  };
+
+  const actionQuote = async (id, action) => {
+    await api.post(`/approvals/${id}/action`, {
+      action,
+    });
+
+    alert(`Quotation ${action}d`);
+    loadQuotes();
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div>
-        <h2 style={{ fontWeight: 800 }}>Procurement Approvals Queue</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Review pending quotations submitted by procurement officers and authorize purchases</p>
-      </div>
+    <div>
+      <h2>Pending Approvals</h2>
 
-      <div className="card" style={{ borderLeft: '4px solid var(--warning)' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Pending Approval Quote #1</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '4px' }}>
-          Vendor: Apex Industrial &bull; Total Bid: ₹27,50,000.00
-        </p>
+      {quotes.map((q) => (
+        <div className="card" key={q.id}>
+          <h3>{q.vendor_name}</h3>
 
-        <form style={{ display: 'flex', gap: '8px', marginTop: '1.5rem', alignItems: 'center' }}>
-          <input type="text" className="form-control" placeholder="Approver remarks..." style={{ flexGrow: 1 }} />
-          <button type="button" className="btn btn-danger">Reject</button>
-          <button type="button" className="btn btn-success">Approve</button>
-        </form>
-      </div>
+          <p>RFQ : {q.rfq_title}</p>
+          <p>Total : ₹{q.total_price}</p>
+
+          <button
+            className="btn btn-success"
+            onClick={() => actionQuote(q.id, "approve")}
+          >
+            Approve
+          </button>
+
+          <button
+            className="btn btn-danger"
+            onClick={() => actionQuote(q.id, "reject")}
+          >
+            Reject
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

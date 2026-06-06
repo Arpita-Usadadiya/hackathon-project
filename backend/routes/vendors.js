@@ -1,5 +1,6 @@
 import express from 'express';
 import { query } from '../db.js';
+import { logAction } from '../utils/logger.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();

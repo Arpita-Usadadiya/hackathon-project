@@ -28,7 +28,7 @@ export default function App() {
 
   const fetchSession = async (currentToken) => {
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${currentToken}` }
       });
       if (res.ok) {
@@ -80,7 +80,7 @@ export default function App() {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: 'password123' })
