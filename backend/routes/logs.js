@@ -4,26 +4,80 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET / - Get audit logs (role-restricted)
+/*
+|--------------------------------------------------------------------------
+| GET ALL LOGS
+|--------------------------------------------------------------------------
+*/
 router.get('/', authenticateToken, async (req, res) => {
-  // TODO: Fetch activity logs from database logs table
-  res.json([]);
+  try {
+    const result = await query(`
+      SELECT
+        id,
+        user_name,
+        user_role,
+        action,
+        details,
+        timestamp
+      FROM logs
+      ORDER BY timestamp DESC
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      error: 'Failed to fetch logs'
+    });
+  }
 });
 
-// GET /analytics - Get dashboard graphs metrics and savings
+/*
+|--------------------------------------------------------------------------
+| ANALYTICS
+|--------------------------------------------------------------------------
+*/
 router.get('/analytics', authenticateToken, async (req, res) => {
-  // TODO: Run aggregate queries:
-  // 1. Total Spend (sum of PO amounts)
-  // 2. Cost Savings (diff between high/low bids)
-  // 3. Category Spend allocations
-  // 4. Monthly spend trends
-  // 5. Vendor ratings & performance CSV data
-  res.json({
-    summary: { activeRfqs: 0, pendingApprovals: 0, activeVendors: 3, totalSpend: 0, costSavings: 0 },
-    categorySpend: [],
-    monthlySpend: [],
-    vendorPerformance: []
-  });
+  try {
+
+    const rfqCount = await query(
+      `SELECT COUNT(*) FROM rfqs WHERE status='published'`
+    );
+
+    const approvalCount = await query(
+      `SELECT COUNT(*) FROM quotations WHERE status='submitted'`
+    );
+
+    const vendorCount = await query(
+      `SELECT COUNT(*) FROM vendors`
+    );
+
+    const spendRes = await query(
+      `SELECT COALESCE(SUM(grand_total),0) AS total
+       FROM purchase_orders`
+    );
+
+    res.json({
+      summary: {
+        activeRfqs: Number(rfqCount.rows[0].count),
+        pendingApprovals: Number(approvalCount.rows[0].count),
+        activeVendors: Number(vendorCount.rows[0].count),
+        totalSpend: Number(spendRes.rows[0].total),
+        costSavings: 0
+      },
+      categorySpend: [],
+      monthlySpend: [],
+      vendorPerformance: []
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      error: 'Failed to fetch analytics'
+    });
+  }
 });
 
 export default router;
