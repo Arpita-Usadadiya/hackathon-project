@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "migrate": "node migrate.js"
   },
+
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

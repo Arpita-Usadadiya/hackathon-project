@@ -2,6 +2,7 @@
 -- Initialize tables and constraints
 
 DROP TABLE IF EXISTS logs CASCADE;
+DROP TABLE IF EXISTS vendor_ratings CASCADE;
 DROP TABLE IF EXISTS invoices CASCADE;
 DROP TABLE IF EXISTS purchase_orders CASCADE;
 DROP TABLE IF EXISTS quotations CASCADE;
@@ -107,4 +108,17 @@ CREATE TABLE logs (
     action VARCHAR(255) NOT NULL,
     details TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. Vendor Ratings Table
+CREATE TABLE vendor_ratings (
+    id         SERIAL PRIMARY KEY,
+    vendor_id  INT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+    user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_name  VARCHAR(255) NOT NULL,
+    user_role  VARCHAR(50) NOT NULL,
+    rating     INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review     TEXT DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (vendor_id, user_id)
 );
