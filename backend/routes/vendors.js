@@ -111,4 +111,81 @@ router.put('/:id/status', authenticateToken, requireRole(['admin']), async (req,
   }
 });
 
-export default router;
+
+// GET /:id/ratings - Get all ratings for a vendor (any authenticated user)
+router.get('/:id/ratings', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const ratingsRes = await query(
+      `SELECT vr.*, v.name AS vendor_name
+       FROM vendor_ratings vr
+       JOIN vendors v ON vr.vendor_id = v.id
+       WHERE vr.vendor_id = $1
+       ORDER BY vr.created_at DESC`,
+      [id]
+    );
+    // Also include average and count
+    const statsRes = await query(
+      `SELECT ROUND(AVG(rating)::numeric, 2) AS average, COUNT(*) AS total
+       FROM vendor_ratings WHERE vendor_id = $1`,
+      [id]
+    );
+    res.json({
+      ratings: ratingsRes.rows,
+      average: parseFloat(statsRes.rows[0].average) || 0,
+      total:   parseInt(statsRes.rows[0].total) || 0,
+    });
+  } catch (err) {
+    console.error('Fetch vendor ratings error:', err);
+    res.status(500).json({ error: 'Server error fetching ratings' });
+  }
+});
+
+// POST /:id/rate - Submit or update a rating for a vendor (admin, officer, approver)
+router.post('/:id/rate', authenticateToken, requireRole(['admin', 'officer', 'approver']), async (req, res) => {
+  const { id } = req.params;
+  const { rating, review } = req.body;
+
+  if (!rating || rating < 1 || rating > 5 || !Number.isInteger(Number(rating))) {
+    return res.status(400).json({ error: 'Rating must be a whole number between 1 and 5' });
+  }
+
+  try {
+    // Check vendor exists
+    const vendorCheck = await query('SELECT name FROM vendors WHERE id = $1', [id]);
+    if (vendorCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    const vendorName = vendorCheck.rows[0].name;
+
+    // Upsert rating (insert or update if same user rated same vendor before)
+    await query(
+      `INSERT INTO vendor_ratings (vendor_id, user_id, user_name, user_role, rating, review)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (vendor_id, user_id)
+       DO UPDATE SET rating = EXCLUDED.rating, review = EXCLUDED.review, created_at = CURRENT_TIMESTAMP`,
+      [id, req.user.id, req.user.name, req.user.role, Number(rating), review || '']
+    );
+
+    // Recompute average and update vendors.rating
+    const avgRes = await query(
+      `SELECT ROUND(AVG(rating)::numeric, 2) AS avg FROM vendor_ratings WHERE vendor_id = $1`,
+      [id]
+    );
+    const newAvg = parseFloat(avgRes.rows[0].avg) || 5.0;
+    await query(`UPDATE vendors SET rating = $1 WHERE id = $2`, [newAvg, id]);
+
+    await logAction(
+      req.user.id, req.user.name, req.user.role,
+      'Rate Vendor',
+      `Rated vendor "${vendorName}" ${rating}/5 stars.`
+    );
+
+    res.json({ message: 'Rating submitted', average: newAvg });
+  } catch (err) {
+    console.error('Rate vendor error:', err);
+    res.status(500).json({ error: 'Server error submitting rating' });
+  }
+});
+
+export default router;
