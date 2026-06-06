@@ -75,8 +75,39 @@ router.post('/', authenticateToken, async (req, res) => {
 
 // PUT /:id/status - Update vendor status (Admin only)
 router.put('/:id/status', authenticateToken, requireRole(['admin']), async (req, res) => {
-  // TODO: Update vendor status matching parameters
-  res.status(501).json({ message: 'Vendor status update not implemented yet' });
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!status || !['active', 'pending', 'suspended'].includes(status)) {
+    return res.status(400).json({ error: 'Valid status (active, pending, suspended) is required' });
+  }
+
+  try {
+    const checkRes = await query('SELECT name FROM vendors WHERE id = $1', [id]);
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    const vendorName = checkRes.rows[0].name;
+
+    const vendorRes = await query(
+      `UPDATE vendors SET status = $1 WHERE id = $2 RETURNING *`,
+      [status, id]
+    );
+
+    await logAction(
+      req.user.id,
+      req.user.name,
+      req.user.role,
+      'Update Vendor Status',
+      `Updated vendor ${vendorName} status to ${status}.`
+    );
+
+    res.json(vendorRes.rows[0]);
+  } catch (err) {
+    console.error('Update vendor status error:', err);
+    res.status(500).json({ error: 'Server error updating vendor status' });
+  }
 });
 
 export default router;
