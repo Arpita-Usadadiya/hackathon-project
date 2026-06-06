@@ -1,29 +1,31 @@
 import express from 'express';
-import { query } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET / - Get audit logs (role-restricted)
-router.get('/', authenticateToken, async (req, res) => {
-  // TODO: Fetch activity logs from database logs table
-  res.json([]);
-});
+router.get('/', async (req, res) => {
+  const logs = [
+    {
+      id: 1,
+      action: 'RFQ Created',
+      user: 'Procurement Manager',
+      timestamp: '2026-06-06 10:00 AM'
+    },
+    {
+      id: 2,
+      action: 'Quotation Submitted',
+      user: 'Vendor ABC',
+      timestamp: '2026-06-06 10:15 AM'
+    },
+    {
+      id: 3,
+      action: 'Vendor Approved',
+      user: 'Admin',
+      timestamp: '2026-06-06 10:30 AM'
+    }
+  ];
 
-// GET /analytics - Get dashboard graphs metrics and savings
-router.get('/analytics', authenticateToken, async (req, res) => {
-  // TODO: Run aggregate queries:
-  // 1. Total Spend (sum of PO amounts)
-  // 2. Cost Savings (diff between high/low bids)
-  // 3. Category Spend allocations
-  // 4. Monthly spend trends
-  // 5. Vendor ratings & performance CSV data
-  res.json({
-    summary: { activeRfqs: 0, pendingApprovals: 0, activeVendors: 3, totalSpend: 0, costSavings: 0 },
-    categorySpend: [],
-    monthlySpend: [],
-    vendorPerformance: []
-  });
+  res.json(logs);
 });
 
 export default router;
