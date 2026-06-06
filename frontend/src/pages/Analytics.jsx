@@ -1,20 +1,21 @@
-import React, { useEffect, useState } from "react";
-import api from "../api";
+import React, { useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
+import api from '../api';
+
+const BAR_COLORS = ['', 'green', 'purple', 'orange', 'rose', 'teal'];
 
 export default function Analytics() {
   const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]     = useState(true);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
+  useEffect(() => { loadAnalytics(); }, []);
 
   const loadAnalytics = async () => {
     try {
-      const res = await api.get("/logs/analytics");
+      const res = await api.get('/logs/analytics');
       setAnalytics(res.data);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -22,245 +23,156 @@ export default function Analytics() {
 
   const exportCSV = () => {
     if (!analytics) return;
-
     const rows = [
-      ["Metric", "Value"],
-      ["Active RFQs", analytics.summary.activeRfqs],
-      ["Pending Approvals", analytics.summary.pendingApprovals],
-      ["Active Vendors", analytics.summary.activeVendors],
-      ["Total Spend", analytics.summary.totalSpend],
-      ["Cost Savings", analytics.summary.costSavings],
+      ['Metric', 'Value'],
+      ['Active RFQs', analytics.summary.activeRfqs],
+      ['Pending Approvals', analytics.summary.pendingApprovals],
+      ['Active Vendors', analytics.summary.activeVendors],
+      ['Total Spend', analytics.summary.totalSpend],
+      ['Cost Savings', analytics.summary.costSavings],
     ];
-
-    const csvContent = rows
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], {
-      type: "text/csv",
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
+      download: 'vendorbridge-analytics.csv',
     });
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "analytics-report.csv";
     a.click();
-
-    URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return (
-      <div className="card">
-        Loading analytics...
-      </div>
-    );
-  }
+  if (loading) return <div className="loading-wrap"><div className="spinner" /> Loading analytics…</div>;
+
+  const summary = analytics?.summary ?? {};
+  const categorySpend = analytics?.categorySpend ?? [];
+  const monthlySpend  = analytics?.monthlySpend  ?? [];
+  const vendorPerf    = analytics?.vendorPerformance ?? [];
+
+  const maxCategorySpend = Math.max(...categorySpend.map(c => Number(c.amount)), 1);
+  const maxMonthlySpend  = Math.max(...monthlySpend.map(m => Number(m.amount)), 1);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "24px",
-      }}
-    >
-      {/* HEADER */}
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+    <>
+      {/* Summary */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontWeight: 800 }}>
-            Reports & Procurement Analytics
-          </h2>
-
-          <p
-            style={{
-              color: "var(--text-secondary)",
-              fontSize: "0.85rem",
-            }}
-          >
-            Spending, savings and vendor insights
-          </p>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Reports & Analytics</h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>Procurement overview and spending insights</p>
         </div>
-
-        <button
-          className="btn btn-primary"
-          onClick={exportCSV}
-        >
-          Export CSV Report
+        <button className="btn btn-secondary" onClick={exportCSV}>
+          <Download size={14} /> Export CSV
         </button>
       </div>
 
-      {/* SUMMARY */}
-
       <div className="dashboard-grid">
-        <div className="stat-card">
-          <h4>Active RFQs</h4>
-          <h1>
-            {analytics?.summary?.activeRfqs ?? 0}
-          </h1>
-        </div>
-
-        <div className="stat-card">
-          <h4>Pending Approvals</h4>
-          <h1>
-            {analytics?.summary?.pendingApprovals ??
-              0}
-          </h1>
-        </div>
-
-        <div className="stat-card">
-          <h4>Active Vendors</h4>
-          <h1>
-            {analytics?.summary?.activeVendors ?? 0}
-          </h1>
-        </div>
-
-        <div className="stat-card">
-          <h4>Total Spend</h4>
-          <h1>
-            ₹
-            {Number(
-              analytics?.summary?.totalSpend || 0
-            ).toLocaleString()}
-          </h1>
-        </div>
-
-        <div className="stat-card">
-          <h4>Cost Savings</h4>
-          <h1>
-            ₹
-            {Number(
-              analytics?.summary?.costSavings || 0
-            ).toLocaleString()}
-          </h1>
-        </div>
+        {[
+          { label: 'Active RFQs',        value: summary.activeRfqs      ?? 0, color: 'blue'   },
+          { label: 'Pending Approvals',  value: summary.pendingApprovals ?? 0, color: 'orange' },
+          { label: 'Active Vendors',     value: summary.activeVendors    ?? 0, color: 'green'  },
+          { label: 'Total Spend',        value: `₹${Number(summary.totalSpend  || 0).toLocaleString()}`, color: 'purple' },
+          { label: 'Estimated Savings',  value: `₹${Number(summary.costSavings || 0).toLocaleString()}`, color: 'teal'   },
+        ].map(s => (
+          <div key={s.label} className="stat-card">
+            <h4>{s.label}</h4>
+            <h1 style={{ fontSize: typeof s.value === 'string' ? '1.3rem' : '1.75rem' }}>{s.value}</h1>
+          </div>
+        ))}
       </div>
 
-      {/* CATEGORY SPEND */}
-
+      {/* Category Spend */}
       <div className="card">
-        <h3>Category Spend Allocation</h3>
-
-        {analytics?.categorySpend?.length === 0 ? (
-          <p>No category spend data available</p>
+        <div className="card-header"><h3>Spend by Category</h3></div>
+        {categorySpend.length === 0 ? (
+          <div className="empty-state"><h4>No spend data yet</h4></div>
         ) : (
-          <table
-            style={{
-              width: "100%",
-              marginTop: "15px",
-            }}
-          >
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Spend</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {analytics.categorySpend.map(
-                (item, index) => (
-                  <tr key={index}>
-                    <td>{item.category}</td>
-                    <td>
-                      ₹
-                      {Number(
-                        item.amount
-                      ).toLocaleString()}
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {categorySpend.map((item, i) => {
+              const pct = Math.round((Number(item.amount) / maxCategorySpend) * 100);
+              return (
+                <div key={i}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.84rem' }}>
+                    <span style={{ fontWeight: 500 }}>{item.category}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>₹{Number(item.amount).toLocaleString()} ({pct}%)</span>
+                  </div>
+                  <div className="progress-bar-track" style={{ height: 10 }}>
+                    <div className={`progress-bar-fill ${BAR_COLORS[i % BAR_COLORS.length]}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* MONTHLY SPEND */}
-
+      {/* Monthly Spend */}
       <div className="card">
-        <h3>Monthly Spending Trend</h3>
-
-        {analytics?.monthlySpend?.length === 0 ? (
-          <p>No spending data available</p>
+        <div className="card-header"><h3>Monthly Spending Trend</h3></div>
+        {monthlySpend.length === 0 ? (
+          <div className="empty-state"><h4>No monthly data yet</h4></div>
         ) : (
-          <table
-            style={{
-              width: "100%",
-              marginTop: "15px",
-            }}
-          >
-            <thead>
-              <tr>
-                <th>Month</th>
-                <th>Spend</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {analytics.monthlySpend.map(
-                (item, index) => (
-                  <tr key={index}>
-                    <td>{item.month}</td>
-                    <td>
-                      ₹
-                      {Number(
-                        item.amount
-                      ).toLocaleString()}
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {monthlySpend.map((item, i) => {
+              const pct = Math.round((Number(item.amount) / maxMonthlySpend) * 100);
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', minWidth: 80 }}>{item.month}</span>
+                  <div className="progress-bar-track" style={{ flex: 1, height: 10 }}>
+                    <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="progress-label">₹{Number(item.amount).toLocaleString()}</span>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* VENDOR PERFORMANCE */}
-
+      {/* Vendor Performance */}
       <div className="card">
-        <h3>Vendor Performance</h3>
-
-        {analytics?.vendorPerformance?.length ===
-        0 ? (
-          <p>No vendor data available</p>
+        <div className="card-header"><h3>Vendor Performance</h3></div>
+        {vendorPerf.length === 0 ? (
+          <div className="empty-state"><h4>No vendor data yet</h4></div>
         ) : (
-          <table
-            style={{
-              width: "100%",
-              marginTop: "15px",
-            }}
-          >
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>Rating</th>
-                <th>Orders</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {analytics.vendorPerformance.map(
-                (vendor, index) => (
-                  <tr key={index}>
-                    <td>{vendor.name}</td>
-                    <td>{vendor.rating}</td>
-                    <td>{vendor.orders}</td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
+          <div className="table-container">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Vendor</th>
+                  <th>Rating</th>
+                  <th>Score</th>
+                  <th>Orders</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendorPerf.map((v, i) => {
+                  const rating = parseFloat(v.rating) || 0;
+                  const ratingPct = (rating / 5) * 100;
+                  const ratingColor = rating >= 4 ? 'green' : rating >= 3 ? 'orange' : 'rose';
+                  return (
+                    <tr key={i}>
+                      <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>#{i + 1}</td>
+                      <td style={{ fontWeight: 500 }}>{v.name}</td>
+                      <td>
+                        <span className="stars">
+                          {'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}
+                        </span>
+                      </td>
+                      <td style={{ minWidth: 140 }}>
+                        <div className="progress-bar-wrap">
+                          <div className="progress-bar-track" style={{ flex: 1, height: 7 }}>
+                            <div className={`progress-bar-fill ${ratingColor}`} style={{ width: `${ratingPct}%` }} />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 28 }}>{rating.toFixed(1)}</span>
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{v.orders}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
