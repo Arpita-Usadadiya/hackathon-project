@@ -1,0 +1,23 @@
+# Dependency folders
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+.env.staging
+
+# Vite
+.vite/
+
+# System Files
+.DS_Store
+Thumbs.db
